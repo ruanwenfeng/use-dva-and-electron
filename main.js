@@ -3,9 +3,18 @@ const electron = require('electron')
 const app = electron.app
 // Module to create native browser window.
 const BrowserWindow = electron.BrowserWindow
-
+const ipcMain = electron.ipcMain
 const path = require('path')
 const url = require('url')
+const lineReader = require('line-reader');
+const bug = {}
+const bug_data = []
+// read all lines:
+lineReader.eachLine('items.json', function(line) {
+  const _ =JSON.parse(line)
+  bug[_['id']] = _;
+  bug_data.push(_)
+});
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
@@ -13,15 +22,25 @@ let mainWindow
 
 function createWindow () {
   // Create the browser window.
-  mainWindow = new BrowserWindow({width: 800, height: 600})
+  mainWindow = new BrowserWindow({
+    width: 800, 
+    height: 600,
+    webPreferences: {
+      javascript: true,
+      plugins: true,
+      nodeIntegration: false, // 不集成 Nodejs
+      webSecurity: false,
+      preload: path.join(__dirname, 'render.js') // 但预加载的 js 文件内仍可以使用 Nodejs 的 API
+    }
+  })
   mainWindow.setMenuBarVisibility(false)
   // and load the index.html of the app.
-  // mainWindow.loadURL(url.format({
-  //   pathname: path.join(__dirname, 'static', 'index.html'),
-  //   protocol: 'file:',
-  //   slashes: true
-  // }))
-  mainWindow.loadURL('http://localhost:8000/')
+  mainWindow.loadURL(url.format({
+    pathname: path.join(__dirname, 'static', 'index.html'),
+    protocol: 'file:',
+    slashes: true
+  }))
+  // mainWindow.loadURL('http://localhost:8000/')
 
   // Open the DevTools.
   // mainWindow.webContents.openDevTools()
@@ -33,7 +52,19 @@ function createWindow () {
     // when you should delete the corresponding element.
     mainWindow = null
   })
+
+
 }
+ipcMain.on('click', (event, arg)=>{
+  if(arg['id'])
+    event.sender.send('bug-data', [bug[arg['id']]])
+  else
+    event.sender.send('bug-data', bug_data)
+})
+
+ipcMain.on('bug-data', (event, arg) => {
+  event.sender.send('bug-data', bug_data)
+})
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
