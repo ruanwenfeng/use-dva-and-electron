@@ -19,7 +19,10 @@ class BasicLayout extends React.PureComponent {
             key: 'id',
             width:"100px",
             render:(text, record)=>{
-                return <a  onClick={() => alert(record.id)}>{text}</a>;
+                return <a  onClick={() => {
+                    ipcRenderer.send('show-png', record);
+
+                }}>{text}</a>;
             }
         }, {
             title: 'desc',
@@ -72,7 +75,7 @@ class BasicLayout extends React.PureComponent {
            <Form layout="inline" onSubmit={this.handleSubmit}>
                 <FormItem>
                         {getFieldDecorator('id', {})(
-                            <Input prefix={<Icon type="search" style={{ color: 'rgba(0,0,0,.25)' }} />}  />
+                            <Input placeholder="请输入BUG id" prefix={<Icon type="search" style={{ color: 'rgba(0,0,0,.25)' }} />}  />
                         )}
                 </FormItem>
                 <FormItem>

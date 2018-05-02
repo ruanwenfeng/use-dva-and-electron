@@ -1,6 +1,8 @@
 const electron = require('electron')
+const fs = require('fs');
 // Module to control application life.
-const app = electron.app
+const app = electron.app;
+const exec = require('child_process').exec; 
 // Module to create native browser window.
 const BrowserWindow = electron.BrowserWindow
 const ipcMain = electron.ipcMain
@@ -15,15 +17,20 @@ lineReader.eachLine('items.json', function(line) {
   bug[_['id']] = _;
   bug_data.push(_)
 });
+let jsonIndex;
+fs.readFile('index.json', (err, data)=>{
+  if(err) throw err;
+  else jsonIndex = JSON.parse(data);
+})
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
 let mainWindow
-
+let pics = []
 function createWindow () {
   // Create the browser window.
   mainWindow = new BrowserWindow({
-    width: 800, 
+    width: 1200, 
     height: 600,
     webPreferences: {
       javascript: true,
@@ -66,6 +73,43 @@ ipcMain.on('bug-data', (event, arg) => {
   event.sender.send('bug-data', bug_data)
 })
 
+ipcMain.on('show-png', (event, arg) => {
+  var cmdStr = '"C:\\Program Files (x86)\\Graphviz2.38\\bin\\dot.exe" -T png -O '+path.join(__dirname, 'graph', 'graph_'+jsonIndex[arg['id']]);
+  console.log(cmdStr);
+  exec(cmdStr, (err,stdout)=>{
+    if(err) {
+      event.sender.send('show-png-reply', false)
+    }
+    else{
+      // fs.readFile(path.join(__dirname, 'graph', 'graph_'+jsonIndex[arg['id']]+'.png'), 'binary', (err,data)=>{
+      //   if(!err)
+      //     event.sender.send('show-png-reply', data)
+      // })
+      pic = new BrowserWindow({
+        width: 800, 
+        height: 600,
+        webPreferences: {
+          webSecurity: false,
+          preload: path.join(__dirname, 'pic.js'),
+        }
+      });
+     // pic.setMenuBarVisibility(false);
+      pic.loadURL(url.format({
+        pathname: path.join(__dirname, 'pic.html'),
+        protocol: 'file:',
+        slashes: true
+      }))
+      pic.on('closed', function () {
+        pic = null
+      })
+      pics.push(pic);
+      pic.webContents.on('did-finish-load',()=>{
+        console.log('finish');
+        pic.webContents.send('src-change', path.join('.', 'graph', 'graph_'+jsonIndex[arg['id']]+'.png'));
+      });
+    }
+  })
+})
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
